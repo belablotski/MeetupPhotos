@@ -18,6 +18,9 @@ namespace MeetupImages
             this.OutputDir = OutputDir;
         }
 
+        /// <summary>
+        /// Fetch photo album
+        /// </summary>
         public void Fetch()
         {
             int count = 1;
@@ -38,7 +41,7 @@ namespace MeetupImages
         {
             HashSet<string> result = new HashSet<string>();
             string url = $"https://www.meetup.com/adventurers-100/photos/all_photos/?photoAlbumId={AlbumId}";
-            Console.WriteLine("Fetching photo album page '{url}'")
+            Console.WriteLine($"Fetching photo album page '{url}'");
             using (WebClient client = new WebClient())
             {
                 string html = client.DownloadString(url);
@@ -56,7 +59,6 @@ namespace MeetupImages
         /// <summary>
         /// Fetch one HTML page from gallery
         /// </summary>
-        /// <param name="url"></param>
         /// <returns>Set of URLs of other gallery pages, referenced on the current page</returns>
         private HashSet<string> FetchPhotoHtmlPage(string url)
         {
@@ -81,6 +83,9 @@ namespace MeetupImages
             return result;
         }
 
+        /// <summary>
+        /// Fetch one image and save it to the file with the same name as in URL
+        /// </summary>
         private void FetchImage(string url)
         {
             string filePath = Path.Combine(OutputDir, Regex.Replace(url, "^.*/", ""));
