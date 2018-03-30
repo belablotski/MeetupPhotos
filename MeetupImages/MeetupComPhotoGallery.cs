@@ -4,11 +4,13 @@ using System.IO;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using System.Threading;
 
 namespace MeetupImages
 {
     class MeetupComPhotoAlbum
     {
+        private bool SaveHtmlForDebug = false;
         public string AlbumId { get; }
         public string OutputDir { get; }
 
@@ -29,6 +31,7 @@ namespace MeetupImages
             while (en.MoveNext()) {
                 Console.WriteLine($"Urls fetched {count} of {urlsToFetch.Count}");
                 FetchPhotoHtmlPage(en.Current);
+                Thread.Sleep(new TimeSpan(0, 0, 3));    // I wouldn't like to overload meetup.com
                 count++;
             }
         }
@@ -45,7 +48,10 @@ namespace MeetupImages
             using (WebClient client = new WebClient())
             {
                 string html = client.DownloadString(url);
-                File.WriteAllText(Path.Combine(OutputDir, $"album_{AlbumId}.html"), html);
+                if (SaveHtmlForDebug)
+                {
+                    File.WriteAllText(Path.Combine(OutputDir, $"album_{AlbumId}.html"), html);
+                }
                 string patternPage = $"<a href=\"(https://www.meetup.com/adventurers-100/photos/{AlbumId}/.{{1,12}}/)\"";
                 foreach (Match m in Regex.Matches(html, patternPage, RegexOptions.IgnoreCase))
                 {
@@ -60,27 +66,24 @@ namespace MeetupImages
         /// Fetch one HTML page from gallery
         /// </summary>
         /// <returns>Set of URLs of other gallery pages, referenced on the current page</returns>
-        private HashSet<string> FetchPhotoHtmlPage(string url)
+        private void FetchPhotoHtmlPage(string url)
         {
-            HashSet<string> result = new HashSet<string>();
             url = Regex.Replace(url, @"/\s*$", "");
             string imageId = Regex.Replace(url, @"^.*/", "");
             Console.WriteLine($"Fetching page of image '{imageId}' the url is '{url}'...");
-            string patternHighres = $@"https://secure.meetupstatic.com/photos/event/.{{6,12}}/highres_{imageId}.jpeg";
+            string patternHighres = $@"https://secure.meetupstatic.com/photos/event/.{{2,12}}/highres_{imageId}.jpeg";
             string patternGalleryPages = "<a href=\"(https://www.meetup.com/adventurers-100/photos/28660769/.{6,12}/)\" class=\"J_onClick J_photoGallery_getImage\" title=\"\">";
             using (WebClient client = new WebClient())
             {
                 string html = client.DownloadString(url);
-                File.WriteAllText(Path.Combine(OutputDir, $"{imageId}.html"), html);
-                Match match = Regex.Match(html, patternHighres, RegexOptions.IgnoreCase);
-                FetchImage(match.Value);
-                foreach(Match m in Regex.Matches(html, patternGalleryPages, RegexOptions.IgnoreCase))
+                if (SaveHtmlForDebug)
                 {
-                    Trace.Assert(m.Groups.Count == 2, "Internal URL group isn't found in HTML (parsing photo page)");
-                    result.Add(m.Groups[1].Value);
+                    File.WriteAllText(Path.Combine(OutputDir, $"{imageId}.html"), html);
                 }
+                Match match = Regex.Match(html, patternHighres, RegexOptions.IgnoreCase);
+                Trace.Assert(match.Success, "Can't extract URL to high-resolution image from photo HTML page");
+                FetchImage(match.Value);
             }
-            return result;
         }
 
         /// <summary>
